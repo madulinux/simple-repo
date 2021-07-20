@@ -1,0 +1,12 @@
+<?php namespace interface_namespace;
+
+use Madulinux\Repositories\BaseRepositoryInterface as Repository;
+
+/**
+ * Class interface_class
+ * @package interface_namespace
+ */
+interface interface_class extends Repository
+{
+    //
+}

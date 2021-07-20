@@ -1,0 +1,21 @@
+<?php namespace repository_namespace;
+
+use model_path\model_name;
+use Madulinux\Repositories\Eloquent\BaseRepository as Repository;
+use interface_namespace\interface_class;
+
+/**
+ * Class repository_class
+ * @package repository_namespace
+ */
+class repository_class extends Repository implements interface_class
+{
+
+    /**
+     * @return string
+     */
+    public function model()
+    {
+        return model_name::class;
+    }
+}
