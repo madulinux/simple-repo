@@ -26,7 +26,7 @@ composer dump-autoload
 Publish file config file
 
 ```bash
-php artisan vendor:publish --tag="repository"
+php artisan vendor:publish --tag="repositories"
 ```
 
 ## Usage
