@@ -16,7 +16,9 @@ class MakeRepositoryCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'make:repository {repository} {--model=}';
+    protected $signature = 'make:repository 
+                            {repository : Name of repository} 
+                            {--model= : Model ClassName}';
 
     /**
      * The console command description.
@@ -59,9 +61,9 @@ class MakeRepositoryCommand extends Command
         $repository = $this->argument('repository');
 
         $model      = $this->option('model');
-
-        $this->writeRepository($repository, $model);
         
+        $this->writeRepository($repository, $model);
+
         $this->composer->dumpAutoloads();
     }
 
@@ -69,17 +71,18 @@ class MakeRepositoryCommand extends Command
     {
         
         $this->info('Repository ' . $repository);
-        $this->info('Model ' . $model);
+        
+        if ($model) $this->info('Model ' . $model);
+
         try {
             $make = $this->creator->create($repository, $model);
-            if ($make)
-            {
+            if ($make) {
                 $this->info('new Repository created.');
             } else {
-                $this->warn('make repository Failed');
-                $this->error('Failed!');
+                $this->error('make repository Failed!');
             }
         } catch (\Throwable $th) {
+            $this->error($th->getMessage());
             throw $th;
         }
     }
