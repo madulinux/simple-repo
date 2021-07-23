@@ -231,6 +231,8 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $join = isset($request['join']) ? (array) $request['join'] : [];
         
         $this->applyCriteria();
+        $this->applyScope();
+        
         $data = $this->model;
         if ($with) {
             $data = $data->with($with);
