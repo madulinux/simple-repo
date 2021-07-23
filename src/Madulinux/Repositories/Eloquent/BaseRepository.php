@@ -1,7 +1,10 @@
 <?php
 namespace Madulinux\Repositories\Eloquent;
 
-use Madulinux\Exceptions\GeneralException;
+use Closure;
+use Exception;
+use Illuminate\Container\Container as Application;
+use Madulinux\Repositories\Exceptions\GeneralException;
 use Madulinux\Repositories\BaseRepositoryInterface;
 use Madulinux\Repositories\Criteria\Criteria;
 use Madulinux\Repositories\CriteriaInterface;
@@ -14,6 +17,11 @@ use Illuminate\Support\Collection;
  */
 abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterface
 {
+    /**
+     * @var Application
+     */
+    protected $app;
+
     /**
      * @var Model
      */
@@ -30,13 +38,19 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     protected $skipCriteria = false;
 
     /**
+     * @var \Closure
+     */
+    protected $scopeQuery = null;
+
+    /**
      * Prevents fro overwriting same criteria in chain usage
      * @var bool
      */
     protected $preventCriteriaOverwriting = true;
 
-    public function __construct()
+    public function __construct(Application $app)
     {
+        $this->app = $app;
         $this->makeModel();
         $this->initCriteria();
     }
@@ -53,101 +67,209 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      */
     public function makeModel()
     {
-        $model = app()->make($this->model());
+        return $this->model = $this->newModel();
+    }
+
+    /**
+     * 
+     */
+    public function resetModel()
+    {
+        $this->makeModel();
+    }
+
+    /**
+     * @return Model|mixed
+     * @throws GeneralException
+     */
+    public function newModel()
+    {
+        $model = $this->app->make($this->model());
+
         if (! $model instanceof Model) {
             throw new GeneralException("Class {$this->model()} must be an instace of " . Model::class);
         }
-        return $this->model = $model;
+        
+        return $model;
     }
+    
     /**
-     * @param array $columns
-     * @param $perPage
-     * @param $currentPage
-     * @return mixed
+     * Retrieve data array for populate field select
+     *
+     * @param string $column
+     * @param string|null $key
+     *
+     * @return \Illuminate\Support\Collection|array
      */
-    public function all($columns = array('*'), $perPage = null, $currentPage = null)
+    public function lists($column, $key = null)
     {
         $this->applyCriteria();
-        $perPage = (int) $perPage;
-        $currentPage = (int) $currentPage;
-        $result = $this->model;
-        if ($perPage != 0) {
-            $result = $result->take($perPage);
-            if ($currentPage != 0) {
-                $skip = $currentPage * $perPage;
-                $result = $result->skip($skip);
-            }
-        }
+
+        return $this->model->lists($column, $key);
+    }
+
+    /**
+     * Retrieve data array for populate field select
+     * Compatible with Laravel 5.3
+     * @param string $column
+     * @param string|null $key
+     *
+     * @return \Illuminate\Support\Collection|array
+     */
+    public function pluck($column, $key = null)
+    {
+        $this->applyCriteria();
+
+        return $this->model->pluck($column, $key);
+    }
+
+    /**
+     * @param array $columns
+     * @return mixed
+     */
+    public function all($columns = ['*'])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->get($columns);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+    }
+    
+    /**
+     * @param array $columns
+     * @return mixed
+     */
+    public function get($columns = ['*'])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->get($columns);
+
         return $result->get($columns);
     }
 
     /**
+     * @param array $where
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function count(array $where = [], $columns = '*')
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        if ($where) {
+            $this->applyConditions($where);
+        }
+
+        $result = $this->model->count($columns);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+    }
+
+    /**
      * jquery datatables (datatables.net)
-     * @param array $columns
-     * @param int $start
-     * @param int $length
-     * @param array $search
-     * @param array $order
-     * @param array $columnsDef
+     * @param array $request
      * @return mixed
      */
-    public function datatable(array $columns, int $start = 0, int $length = 10, array $search, array $order, array $columnsDef = ['*'], $with = [], $joins = [])
+    public function datatable(array $request)
     {
-        $select = $columnsDef;
-        $table_name = $this->model->getTable();
-        $table_key = $this->model->getKeyName();
-        $table_to_join = null;
-        $table_to_join_key = null;
-        $join_type = 'leftJoin';
-        $data = $this->model;
+        $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
+        $select = $columnDef;
+        $columns = $request['columns'];
 
+        $searchable = array();
+        $where = [];
+        foreach ($columns as $key => $column) {
+            if ($columnDef == null && isset($column['name'])) {
+                $select[$key] = $column['name'] . ' as ' . $column['data'];
+            }
+
+            if (isset($column['search'])) {
+                if(isset($column['search']['value'])) {
+                    $search_value = $column['search']['value'];
+                    $search_regex = $column['search']['regex'];
+                    if ($search_value != null || $search_value != "") {
+                        if ($search_regex == 'false') {
+                            $where[] = [$column['name'] ?? $column['data'], $search_value];
+                        } else {
+                            if ($search_regex == 'true') {
+                                $where[] = [$column['name'] ?? $column['data'], 'like', '%'.$search_value.'%'];
+                            } else {
+                                $where[] = [$column['name'] ?? $column['data'], 'REGEXP', $search_regex];
+                            }
+                        }
+
+                    }
+                }
+            }
+
+            if (isset($column['searchable'])) {
+                if ($column['searchable'] == 'true') {
+                    $searchable[] = $column['name'] ?? $column['data'];
+                }
+            }
+        }
+
+        $select = $select == null ? ['*'] : $select;
+        
+        $start = (int) $request['start'];
+        $length = (int) $request['length'];
+        $search = (array) $request['search'];
+        $order = (array) $request['order'];
+        $with = isset($request['with']) ? (array) $request['with'] : [];
+        $join = isset($request['join']) ? (array) $request['join'] : [];
+        
+        $this->applyCriteria();
+        $data = $this->model;
         if ($with) {
             $data = $data->with($with);
         }
 
         $data = $data->select($select);
-        if ($joins) {
-            foreach ($joins as $key => $value) {
-                if (is_array($value)) {
-                    if (count($value) === 5) {
-                        list($join_type, $table_name, $table_to_join, $table_key, $table_to_join_key) = $value;
-                    } elseif (count($value) === 4) {
-                        list($join_type, $table_to_join, $table_to_join_key, $table_key) = $value;
-                    } elseif (count($value) === 3) {
-                        list($join_type, $table_to_join, $table_to_join_key) = $value;
-                    }
-                    if ($table_to_join != null && $table_to_join_key != null) {
-                        switch ($join_type) {
-                            case 'leftJoin':
-                                $data = $data->leftJoin($table_to_join, $table_to_join.'.'.$table_to_join_key, $table_name.'.'.$table_key);
-                                break;
-                            default:
-                                $data = $data->join($table_to_join, $table_to_join.'.'.$table_to_join_key, $table_name.'.'.$table_key);
-                                break;
-                        }
-                    }
-                }
-            }
+        if ($join) {
+            $this->applyJoin($join);
         }
 
-        foreach ($columns as $key => $column) {
-            if (isset($search['value'])) {
-                
-            }
+        if (count($where) != 0) {
+            $data = $data->where(function ($query) use ($where) {
+                foreach ($where as $key => $value) {
+                    if (count($value) == 2) {
+                        list($c, $s) = $value;
+                        $query = $query->where($c, $s);
+                    }
+                    if (count($value) == 3) {
+                        list($c, $op, $s) = $value;
+                        $query = $query->where($c, $op, $s);
+                    }
+                }
+            });
         }
 
-
-        if ($search) {
-            foreach ($search as $key => $value) {
-                if ($key == 'value' && $value != "") {
-                    
-                }
+        if (isset($search['value'])) {
+            if ($search['value'] != null || $search['value'] != '') {
+                $data = $data->where(function ($query) use ($searchable, $search) {
+                    foreach ($searchable as $key => $column) {
+                        $query = ($key == 0) ? $query->where($column, 'like', '%'.$search['value'].'%') : $query->orWhere($column, 'like', '%'.$search['value'].'%');
+                    }
+                    return $query;
+                });
             }
         }
 
         if ($order) {
             foreach ($order as $k => $ord) {
-                $data = $data->orderBy($columns[$ord['column']]['name'], $ord['dir']);
+                $data = $data->orderBy($columns[$ord['column']]['data'], $ord['dir']);
             }
         }
 
@@ -155,11 +277,16 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $recordsFiltered = $data->count();
         $data = $data->skip($start)->take($length)->get();
 
-        return (object) [
+        $result = (object) [
             'data'              => $data,
             'recordsTotal'      => $recordsTotal,
             'recordsFiltered'   => $recordsFiltered,
         ];
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
     }
 
     /**
@@ -168,50 +295,67 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      */
     public function create(array $data)
     {
-        return $this->model->create($data);
+        $result = $this->model->create($data);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
     }
 
     /**
      * @param array $data
      * @return bool
      */
-    public function saveOne(array $data)
+    public function save(array $data)
     {
+        $result = $this->model;
+
         foreach ($data as $key => $value) {
-            $this->model->$key = $value;
+            $result->$key = $value;
         }
-        return $this->model->save();
+
+        $result->save();
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
     }
 
     /**
      * @param $id
      * @return mixed
      */
-    public function findOne($id, $columns = array('*'))
+    public function find($id, $columns = ['*'])
     {
-        return $this->model->find($id, $columns);
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->find($id, $columns);
+        
+        $this->resetModel();
+
+        return $result;
+
     }
 
     /**
-     * @param string $field
+     * @param $field
      * @param $value
      * @param array $columns
      * @return mixed
      */
-    public function findOneBy(string $field, $value, $columns = array('*'))
+    public function findByField($field, $value, $columns = ['*'])
     {
-        return $this->model->where($field, $value)->first($columns);
-    }
+        $this->applyCriteria();
+        $this->applyScope();
+        
+        $result = $this->model->where($field, '=', $value)->get($columns);
 
-    /**
-     * @param string @field
-     * @param $value
-     * @param array $columns
-     * @return mixed
-     */
-    public function findAllBy(string $field, $value, $columns = array('*'))
-    {
-        return $this->model->where($field, $value)->get($columns);
+        $this->resetModel();
+
+        return $result;
     }
 
     /**
@@ -220,26 +364,71 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param bool $or
      * @return mixed
      */
-    public function findWhere($where, $columns = array('*'), $or = false)
+    public function findWhere($where, $columns = ['*'], $or = false)
     {
-        $result = $this->model;
+        $this->applyCriteria();
+        $this->applyScope();
+        $this->applyConditions($where, $or);
 
-        foreach ($where as $key => $value) {
-            if ($value instanceof \Closure) {
-                $result = (!$or) ? $result->where($value) : $result->orWhere($value);
-            } elseif (is_array($value)) {
-                if (count($value) === 3) {
-                    list($field, $operator, $search) = $value;
-                    $result = (!$or) ? $result->where($field, $operator, $search) : $result->orWhere($field, $operator, $search);
-                } elseif (count($value) == 2) {
-                    list($field, $search) = $value;
-                    $result = (!$or) ? $result->where($field, $search) : $result->orWhere($field, $search);
-                }
-            } else {
-                $result = (!$or) ? $result->where($key, $value) : $result->orWhere($key, $value);
-            }
-        }
-        return $result->get($columns);
+        $result = $this->model->get($columns);
+
+        $this->resetModel();
+
+        return $result;
+    }
+
+    /**
+     * @param $field
+     * @param array $values
+     * @param array $columns
+     * @return mixed
+     */
+    public function findWhereIn($field, array $values, $columns = ['*'])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->whereIn($field, $values)->get($columns);
+
+        $this->resetModel();
+
+        return $result;
+    }
+
+    /**
+     * @param $field
+     * @param array $values
+     * @param array $columns
+     * @return mixed
+     */
+    public function findWhereNotIn($field, array $values, $columns = ['*'])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->whereNotIn($field, $values)->get($columns);
+
+        $this->resetModel();
+
+        return $result;
+    }
+
+    /**
+     * @param $field
+     * @param array $values
+     * @param array $columns
+     * @return mixed
+     */
+    public function findWhereBetween($field, array $values, $columns = ['*'])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->whereBetween($field, $values)->get($columns);
+
+        $this->resetModel();
+
+        return $result;
     }
 
     /**
@@ -248,13 +437,19 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param string $field
      * @return mixed
      */
-    public function updateOne(array $data, $id, $field = 'id')
+    public function update(array $data, $id)
     {
+        $this->applyScope();
         $result = $this->model->findOrFail($id);
         foreach ($data as $key => $value) {
             $result->$key = $value;
         }
-        return $result->save();
+        $result->save();
+
+        $this->resetModel();
+        $this->resetScope();
+        
+        return $result;
     }
 
     /**
@@ -265,45 +460,156 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      */
     public function updateBy(string $field, $value, array $data)
     {
-        return $this->model->where($field, $value)->update($data);
+        $this->applyScope();
+
+        $result = $this->model->where($field, $value)->update($data);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
     }
 
     /**
      * @param $id
      * @return mixed
      */
-    public function delete($id)
+    public function delete($id, $force = false)
     {
-        return $this->model->destroy($id);
+        $this->applyScope();
+        $result = $this->model;
+        if ($force) {
+            $result = $result->find($id)->forceDelete();
+        } else {
+            $result = $result->destroy($id);
+        }
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
     }
 
     /**
-     * @param $id
+     * @param array $where
      * @return mixed
      */
-    public function forceDelete($id)
+    public function deleteWhere(array $where, $force = false)
     {
-        return $this->model->find($id)->forceDelete();
+        $this->applyScope();
+        $this->applyConditions($where);
+
+        $result = $this->model;
+        if ($force) {
+            $result = $result->forceDelete();
+        } else {
+            $result = $result->delete();
+        }
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
     }
 
     /**
-     * @param string $field
-     * @param $value
-     * @return mixed
+     * Check if entity has relation
+     *
+     * @param string $relation
+     *
+     * @return $this
      */
-    public function deleteBy(string $field, $value)
+    public function has($relation)
     {
-        return $this->model->where($field, $value)->delete();
+        $this->model = $this->model->has($relation);
+
+        return $this;
     }
 
     /**
-     * @param string $field
-     * @param $value
-     * @return mixed
+     * Load relations
+     *
+     * @param array|string $relations
+     *
+     * @return $this
      */
-    public function forceDeleteBy(string $field, $value)
+    public function with($relations)
     {
-        return $this->model->where($field, $value)->forceDelete();
+        $this->model = $this->model->with($relations);
+
+        return $this;
+    }
+
+    /**
+     * @param  mixed $relations
+     * @return $this
+     */
+    public function withCount($relations)
+    {
+        $this->model = $this->model->withCount($relations);
+
+        return $this;
+    }
+
+    /**
+     * @param string $relation
+     * @param closure $closure
+     *
+     * @return $this
+     */
+    public function whereHas($relation, $closure)
+    {
+        $this->model = $this->model->whereHas($relation, $closure);
+
+        return $this;
+    }
+
+    /**
+     * @param array $fields
+     *
+     * @return $this
+     */
+    public function hidden(array $fields)
+    {
+        $this->model->setHidden($fields);
+
+        return $this;
+    }
+
+    /**
+     * @param mixed $column
+     * @param string $direction
+     *
+     * @return $this
+     */
+    public function orderBy($column, $direction = 'asc')
+    {
+        $this->model = $this->model->orderBy($column, $direction);
+
+        return $this;
+    }
+
+    /**
+     * @param int $skip
+     *
+     * @return $this
+     */
+    public function skip($skip)
+    {
+        $this->model = $this->model->skip($skip);
+
+        return $this;
+    }
+
+    /**
+     * @param int $limit
+     *
+     * @return $this
+     */
+    public function take($limit)
+    {
+        $this->model = $this->model->limit($limit);
+        return $this;
     }
 
     /**
@@ -371,11 +677,139 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             return $this;
         }
 
-        foreach ($this->getCriteria() as $criteria) {
-            if ($criteria instanceof Criteria)
-                $this->model = $criteria->apply($this->model, $this);
+        $criterias = $this->getCriteria();
+
+        if ($criterias) {
+            foreach ($criterias as $criteria) {
+                if ($criteria instanceof Criteria)
+                    $this->model = $criteria->apply($this->model, $this);
+            }
         }
 
         return $this;
+    }
+
+    /**
+     * Reset Query Scope
+     *
+     * @return $this
+     */
+    public function resetScope()
+    {
+        $this->scopeQuery = null;
+
+        return $this;
+    }
+
+    /**
+     * Apply scope in current Query
+     *
+     * @return $this
+     */
+    protected function applyScope()
+    {
+        if (isset($this->scopeQuery) && is_callable($this->scopeQuery)) {
+            $callback = $this->scopeQuery;
+            $this->model = $callback($this->model);
+        }
+
+        return $this;
+    }
+
+        /**
+     * Query Scope
+     *
+     * @param \Closure $scope
+     *
+     * @return $this
+     */
+    public function scopeQuery(\Closure $scope)
+    {
+        $this->scopeQuery = $scope;
+
+        return $this;
+    }
+
+    /**
+     * @param array $where
+     * @return void
+     */
+    protected function applyConditions(array $where, $or = false)
+    {
+        foreach ($where as $key => $value) {
+            if ($value instanceof \Closure) {
+                $this->model = (!$or) ? $this->model->where($value) : $this->model->orWhere($value);
+            } elseif (is_array($value)) {
+                if (count($value) === 3) {
+                    list($field, $operator, $search) = $value;
+                    $this->model = (!$or) ? $this->model->where($field, $operator, $search) : $this->model->orWhere($field, $operator, $search);
+                } elseif (count($value) == 2) {
+                    list($field, $search) = $value;
+                    $this->model = (!$or) ? $this->model->where($field, $search) : $this->model->orWhere($field, $search);
+                }
+            } else {
+                $this->model = (!$or) ? $this->model->where($key, $value) : $this->model->orWhere($key, $value);
+            }
+        }
+    }
+
+    /**
+     * return model table name
+     */
+    protected function getTableName()
+    {
+        $model = $this->newModel();
+        return $model->getTable();
+    }
+
+    /**
+     * return model primary key
+     */
+    protected function getTableKey()
+    {
+        $model = $this->newModel();
+        return $model->getKeyName();
+    }
+
+    /**
+     * @param array $join
+     * @return void
+     */
+    protected function applyJoin(array $join)
+    {
+        $primary_table = $this->getTableName();
+        $primary_table_key = $this->getTableKey();
+        $secondary_table = null;
+        $secondary_table_key = null;
+        $join_type = 'left';
+        
+        foreach ($join as $key => $value) {
+            if (is_array($value)) {
+
+                if (count($value) === 5) {
+                    list($join_type, $primary_table, $primary_table_key, $secondary_table, $secondary_table_key) = $value;
+                } elseif (count($value) === 4) {
+                    list($join_type, $secondary_table, $secondary_table_key, $primary_table_key) = $value;
+                } elseif (count($value) === 3) {
+                    list($join_type, $secondary_table, $secondary_table_key) = $value;
+                } elseif (count($value) == 2) {
+                    list($secondary_table, $secondary_table_key) = $value;
+                }
+
+                if ($primary_table != null & $secondary_table != null && $secondary_table_key != null) {
+                    switch ($join_type) {
+                        case 'left':
+                            $this->model = $this->model->leftJoin($secondary_table, $secondary_table.'.'.$secondary_table_key, $primary_table.'.'.$primary_table_key);
+                            break;
+                        case 'right':
+                            $this->model = $this->model->rightJoin($secondary_table, $secondary_table.'.'.$secondary_table_key, $primary_table.'.'.$primary_table_key);
+                            break;
+                        default:
+                            $this->model = $this->model->join($secondary_table, $secondary_table.'.'.$secondary_table_key, $primary_table.'.'.$primary_table_key);
+                            break;
+                    }
+                }
+            }
+        }
     }
 }

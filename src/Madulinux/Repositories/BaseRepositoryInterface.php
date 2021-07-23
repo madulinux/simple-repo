@@ -8,24 +8,40 @@ namespace Madulinux\Repositories;
 interface BaseRepositoryInterface
 {
     /**
+     * Retrieve data array for populate field select
+     *
+     * @param string $column
+     * @param string|null $key
+     *
+     * @return \Illuminate\Support\Collection|array
+     */
+    public function lists($column, $key = null);
+
+     /**
+     * @param string $column
+     * @param string|null $key
+     *
+     * @return \Illuminate\Support\Collection|array
+     */
+    public function pluck($column, $key = null);
+    /**
      * @param array $columns
-     * @param $perPage
-     * @param $currentPage
      * @return mixed
      */
-    public function all($columns = array('*'), $perPage = null, $currentPage = null);
+    public function all($columns = ['*']);
 
     /**
-     * jquery datatable default
      * @param array $columns
-     * @param int $start
-     * @param int $length
-     * @param array $search
-     * @param array $order
-     * @param array $columnsDef
      * @return mixed
      */
-    public function datatable(array $columns, int $start = 0, int $length = 10, array $search, array $order, array $columnsDef = ['*']);
+    public function get($columns = ['*']);
+
+    /**
+     * jquery datatable default request (draw, columns, order, start, length, search)
+     * @param array $request
+     * @return mixed
+     */
+    public function datatable(array $request);
 
     /**
      * @param array $data
@@ -37,13 +53,13 @@ interface BaseRepositoryInterface
      * @param array $data
      * @return bool
      */
-    public function saveOne(array $data);
+    public function save(array $data);
 
     /**
      * @param $id
      * @return mixed
      */
-    public function findOne($id, $columns = array('*'));
+    public function find($id, $columns = ['*']);
 
     /**
      * @param string $field
@@ -51,29 +67,46 @@ interface BaseRepositoryInterface
      * @param array $columns
      * @return mixed
      */
-    public function findOneBy(string $field, $value, $columns = array('*'));
+    public function findByField(string $field, $value, $columns = ['*']);
 
-    /**
-     * @param string @field
-     * @param $value
-     * @param array $columns
-     * @return mixed
-     */
-    public function findAllBy(string $field, $value, $columns = array('*'));
 
     /**
      * @param $where
      * @param array $columns
      * @return mixed
      */
-    public function findWhere($where, $columns = array('*'));
+    public function findWhere(array $where, $columns = array('*'));
+
+    /**
+     * @param $field
+     * @param array $values
+     * @param array $columns
+     * @return mixed
+     */
+    public function findWhereIn($field, array $values, $columns = array('*'));
+
+    /**
+     * @param $field
+     * @param array $values
+     * @param array $columns
+     * @return mixed
+     */
+    public function findWhereNotIn($field, array $values, $columns = array('*'));
+
+    /**
+     * @param $field
+     * @param array $values
+     * @param array $columns
+     * @return mixed
+     */
+    public function findWhereBetween($field, array $values, $columns = array('*'));
 
     /**
      * @param array $data
      * @param $id
      * @return mixed
      */
-    public function updateOne(array $data, $id);
+    public function update(array $data, $id);
 
     /**
      * @param string $field
@@ -85,27 +118,32 @@ interface BaseRepositoryInterface
 
     /**
      * @param $id
+     * @param bool $force
      * @return mixed
      */
-    public function delete($id);
+    public function delete($id, $force = false);
 
     /**
-     * @param $id
-     * @return mixed
-     */
-    public function forceDelete($id);
-
-    /**
-     * @param string $field
+     * @param array $where
+     * @param bool $force
      * @param $value
      * @return mixed
      */
-    public function deleteBy(string $field, $value);
+    public function deleteWhere(array $where, $force = false);
 
     /**
-     * @param string $field
-     * @param $value
-     * @return mixed
+     * Query Scope
+     *
+     * @param \Closure $scope
+     *
+     * @return $this
      */
-    public function forceDeleteBy(string $field, $value);
+    public function scopeQuery(\Closure $scope);
+
+    /**
+     * Reset Query Scope
+     *
+     * @return $this
+     */
+    public function resetScope();
 }
