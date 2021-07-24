@@ -51,7 +51,7 @@ interface BaseRepositoryInterface
 
     /**
      * @param array $data
-     * @return bool
+     * @return mixed
      */
     public function save(array $data);
 
