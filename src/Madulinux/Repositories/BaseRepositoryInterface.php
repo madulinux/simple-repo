@@ -57,6 +57,7 @@ interface BaseRepositoryInterface
 
     /**
      * @param $id
+     * @param array $columns
      * @return mixed
      */
     public function find($id, $columns = ['*']);
@@ -100,6 +101,24 @@ interface BaseRepositoryInterface
      * @return mixed
      */
     public function findWhereBetween($field, array $values, $columns = array('*'));
+
+    /**
+     * @param array $columns
+     * @return mixed
+     */
+    public function first($columns = ['*']);
+
+    /**
+     * @param array $attributes
+     * @return mixed
+     */
+    public function firstOrCreate(array $attributes = []);
+
+    /**
+     * @param array $attributes
+     * @return mixed
+     */
+    public function firstOrNew(array $attributes = []);
 
     /**
      * @param array $data

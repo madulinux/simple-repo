@@ -433,6 +433,55 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $result;
     }
 
+
+    /**
+     * @param array $columns
+     * @return mixed
+     */
+    public function first($columns = ['*'])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->first($columns);
+
+        $this->resetModel();
+
+        return $result;
+    }
+
+    /**
+     * @param array $attributes
+     * @return mixed
+     */
+    public function firstOrCreate(array $attributes = [])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->firstOrCreate($attributes);
+
+        $this->resetModel();
+
+        return $result;
+    }
+
+    /**
+     * @param array $attributes
+     * @return mixed
+     */
+    public function firstOrNew(array $attributes = [])
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->firstOrNew($attributes);
+
+        $this->resetModel();
+
+        return $result;
+    }
+
     /**
      * @param array $data
      * @param $id
