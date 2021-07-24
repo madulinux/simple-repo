@@ -123,17 +123,28 @@ interface BaseRepositoryInterface
     /**
      * @param array $data
      * @param $id
+     * 
      * @return mixed
      */
     public function update(array $data, $id);
+
 
     /**
      * @param string $field
      * @param $value
      * @param array $data
+     * 
      * @return mixed
      */
     public function updateBy(string $field, $value, array $data);
+
+    /**
+     * @param array $attributes
+     * @param array $values
+     *
+     * @return mixed
+     */
+    public function updateOrCreate(array $attributes, array $values = []);
 
     /**
      * @param $id
@@ -149,6 +160,66 @@ interface BaseRepositoryInterface
      * @return mixed
      */
     public function deleteWhere(array $where, $force = false);
+
+
+    /**
+     * Load relations
+     *
+     * @param array|string $relations
+     *
+     * @return $this
+     */
+    public function with($relations);
+
+    /**
+     * @param  mixed $relations
+     * @return $this
+     */
+    public function withCount($relations);
+    
+
+    /**
+     * @param string $relation
+     * @param closure $closure
+     *
+     * @return $this
+     */
+    public function whereHas($relation, $closure);
+
+    /**
+     * @param array $fields
+     *
+     * @return $this
+     */
+    public function hidden(array $fields);
+
+    /**
+     * Set visible fields
+     *
+     * @param array $fields
+     * @return $this
+     */
+    public function visible(array $fields);
+
+    /**
+     * @param int $skip
+     *
+     * @return $this
+     */
+    public function skip($skip);
+
+    /**
+     * @param int $take
+     * @return $this
+     */
+    public function take($take);
+
+    /**
+     * @param int $limit
+     * @return $this
+     */
+    public function limit($limit);
+
 
     /**
      * Query Scope

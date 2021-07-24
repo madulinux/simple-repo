@@ -521,6 +521,17 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $result;
     }
 
+    public function updateOrCreate(array $attributes, array $values = [])
+    {
+        $this->applyScope();
+
+        $result = $this->model->updateOrCreate($attributes, $values);
+
+        $this->resetModel();
+        
+        return $result;
+    }
+
     /**
      * @param $id
      * @return mixed
@@ -617,12 +628,24 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
     /**
      * @param array $fields
-     *
      * @return $this
      */
     public function hidden(array $fields)
     {
         $this->model->setHidden($fields);
+
+        return $this;
+    }
+
+    /**
+     * Set visible fields
+     *
+     * @param array $fields
+     * @return $this
+     */
+    public function visible(array $fields)
+    {
+        $this->model->setVisible($fields);
 
         return $this;
     }
@@ -653,11 +676,22 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     }
 
     /**
+     * @param int $take
+     *
+     * @return $this
+     */
+    public function take($take)
+    {
+        $this->model = $this->model->take($take);
+        return $this;
+    }
+
+    /**
      * @param int $limit
      *
      * @return $this
      */
-    public function take($limit)
+    public function limit($limit)
     {
         $this->model = $this->model->limit($limit);
         return $this;
