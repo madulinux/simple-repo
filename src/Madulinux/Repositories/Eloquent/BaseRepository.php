@@ -307,7 +307,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
     /**
      * @param array $data
-     * @return bool
+     * @return mixed
      */
     public function save(array $data)
     {
@@ -528,7 +528,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $result = $this->model->updateOrCreate($attributes, $values);
 
         $this->resetModel();
-        
+
         return $result;
     }
 
