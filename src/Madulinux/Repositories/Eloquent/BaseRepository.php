@@ -53,6 +53,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $this->app = $app;
         $this->makeModel();
         $this->initCriteria();
+        $this->boot();
     }
 
     /**
@@ -897,4 +898,9 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
     }
+
+    /**
+     * boot from children repository
+     */
+    public function boot() {}
 }
