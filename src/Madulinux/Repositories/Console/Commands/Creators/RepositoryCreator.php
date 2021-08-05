@@ -162,7 +162,7 @@ class RepositoryCreator {
         if (isset($model) && !empty($model)) {
             $result = $model;
         } else {
-            $result = Str::singular($this->stripRepositoryName());
+            $result = Str::studly(Str::singular($this->stripRepositoryName()));
         }
 
         return $result;

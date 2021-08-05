@@ -1,6 +1,8 @@
 <?php
 namespace Madulinux\Repositories;
 
+use Madulinux\Repositories\Criteria\Criteria;
+
 /**
  * Interface BaseRepositoryInterface
  * @package Madulinux\Repositories
@@ -24,6 +26,7 @@ interface BaseRepositoryInterface
      * @return \Illuminate\Support\Collection|array
      */
     public function pluck($column, $key = null);
+
     /**
      * @param array $columns
      * @return mixed
@@ -163,6 +166,15 @@ interface BaseRepositoryInterface
 
 
     /**
+     * Check if entity has relation
+     *
+     * @param string $relation
+     *
+     * @return $this
+     */
+    public function has($relation);
+
+    /**
      * Load relations
      *
      * @param array|string $relations
@@ -201,6 +213,15 @@ interface BaseRepositoryInterface
      */
     public function visible(array $fields);
 
+
+    /**
+     * @param mixed $column
+     * @param string $direction
+     *
+     * @return $this
+     */
+    public function orderBy($column, $direction = 'asc');
+
     /**
      * @param int $skip
      *
@@ -220,6 +241,27 @@ interface BaseRepositoryInterface
      */
     public function limit($limit);
 
+    /**
+     * @param array $where
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function count(array $where = [], $columns = '*');
+
+
+    /**
+     * @param Criteria $criteria
+     * @return $this
+     */
+    public function getByCriteria(Criteria $criteria);
+
+
+    /**
+     * @param Criteria $criteria
+     * @return $this
+     */
+    public function pushCriteria(Criteria $new_criteria);
 
     /**
      * Query Scope
