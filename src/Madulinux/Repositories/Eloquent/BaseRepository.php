@@ -10,6 +10,7 @@ use Madulinux\Repositories\Criteria\Criteria;
 use Madulinux\Repositories\CriteriaInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Class BaseRepository
@@ -152,16 +153,17 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $result = $this->model->get($columns);
 
-        return $result->get($columns);
+        return $result;
     }
 
     /**
      * @param array $where
      * @param string $column
+     * @param bool $reset // clear or reset model and scope
      * 
      * @return int
      */
-    public function count(array $where = [], $columns = '*')
+    public function count(array $where = [], $columns = '*', $reset = true)
     {
         $this->applyCriteria();
         $this->applyScope();
@@ -172,8 +174,10 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $result = $this->model->count($columns);
 
-        $this->resetModel();
-        $this->resetScope();
+        if ($reset) {
+            $this->resetModel();
+            $this->resetScope();
+        }
 
         return $result;
     }
@@ -291,6 +295,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         return $result;
     }
+
 
     /**
      * @param array $data
@@ -846,6 +851,11 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     {
         $model = $this->newModel();
         return $model->getTable();
+    }
+
+    public function getColumnListing()
+    {
+        return Schema::getColumnListing($this->getTableName());
     }
 
     /**
