@@ -240,14 +240,15 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function limit($limit);
-
+    
     /**
      * @param array $where
      * @param string $column
+     * @param bool $reset // clear or reset model and scope
      * 
      * @return int
      */
-    public function count(array $where = [], $columns = '*');
+    public function count(array $where = [], $columns = '*', $reset = true);
 
 
     /**
@@ -278,4 +279,6 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function resetScope();
+
+    public function getColumnListing();
 }
