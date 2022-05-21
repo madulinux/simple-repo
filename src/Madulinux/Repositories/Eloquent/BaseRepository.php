@@ -670,6 +670,16 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     }
 
     /**
+     * @return $this
+     */
+    public function inRandomOrder()
+    {
+        $this->model = $this->model->inRandomOrder();
+
+        return $this;
+    }
+
+    /**
      * @param int $skip
      *
      * @return $this
