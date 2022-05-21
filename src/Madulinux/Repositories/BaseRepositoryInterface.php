@@ -221,6 +221,11 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function orderBy($column, $direction = 'asc');
+    
+    /**
+     * @return $this
+     */
+    public function inRandomOrder();
 
     /**
      * @param int $skip
