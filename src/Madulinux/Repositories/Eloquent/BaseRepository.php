@@ -182,6 +182,19 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $result;
     }
 
+
+    /**
+     * Simple pagination
+     * @param int $page
+     * @param int $per_page
+     * @param array $search_fields
+     * @param string $search
+     * 
+     * @return mixed
+     */
+    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "");
+    
+    
     /**
      * jquery datatables (datatables.net)
      * @param array $request
@@ -632,6 +645,15 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $this;
     }
 
+    /**
+     * where conditions
+     * @param array $conditions
+     * @param bool $or
+     * 
+     * @return $this
+     */
+    public function whereConditions(array $conditions, bool $or = false);
+    
     /**
      * @param array $fields
      * @return $this
