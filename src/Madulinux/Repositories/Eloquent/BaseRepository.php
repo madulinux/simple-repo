@@ -182,7 +182,6 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $result;
     }
 
-
     /**
      * Simple pagination
      * @param int $page
@@ -192,8 +191,48 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * 
      * @return mixed
      */
-    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "");
-    
+    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "")
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $from = 1;
+        $data = $this->model;
+        
+        if (!empty($search_fields)) {
+            $data = $data->whereLike($search_fields, $search);
+        }
+
+        $total = $data->count();
+
+        $to = $total;
+        if ($per_page > 0) {
+            $to = $page * $per_page;
+            $skip = $to - $per_page;
+            $from = $skip + 1;
+            $data = $data->skip($skip)->take($per_page);
+        }
+
+        $data = $data->get();
+
+        $last_page = (int) round($total/$per_page);
+
+        $result = [
+            'total'             => $total,
+            'per_page'          => $per_page,
+            'current_page'      => $page,
+            "last_page"         => $last_page,
+            "from"              => $from,
+            "to"                => $to,
+            'data'              => $data,
+        ];
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+        
+    }
     
     /**
      * jquery datatables (datatables.net)
@@ -645,6 +684,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $this;
     }
 
+
     /**
      * where conditions
      * @param array $conditions
@@ -652,7 +692,11 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * 
      * @return $this
      */
-    public function whereConditions(array $conditions, bool $or = false);
+    public function whereConditions(array $conditions, bool $or = false)
+    {
+        $this->applyConditions($conditions, $or);
+        return $this;
+    }
     
     /**
      * @param array $fields
