@@ -40,6 +40,17 @@ interface BaseRepositoryInterface
     public function get($columns = ['*']);
 
     /**
+     * Simple pagination
+     * @param int $page
+     * @param int $per_page
+     * @param array $search_fields
+     * @param string $search
+     * 
+     * @return mixed
+     */
+    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "");
+    
+    /**
      * jquery datatable default request (draw, columns, order, start, length, search)
      * @param array $request
      * @return mixed
@@ -197,7 +208,16 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function whereHas($relation, $closure);
-
+    
+    /**
+     * where conditions
+     * @param array $conditions
+     * @param bool $or
+     * 
+     * @return $this
+     */
+    public function whereConditions(array $conditions, bool $or = false);
+    
     /**
      * @param array $fields
      *
