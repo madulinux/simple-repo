@@ -29,6 +29,14 @@ Publish file config file
 php artisan vendor:publish --tag="repositories"
 ```
 
+add this provider class to your ```config/app.php```
+```
+    'providers' => [
+        ...
+        App\Providers\CustomEloquentProvider::class,
+        ...
+```
+
 ## Usage
 ### Repository
 
