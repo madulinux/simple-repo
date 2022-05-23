@@ -31,6 +31,11 @@ class RepositoryServiceProvider extends ServiceProvider
             [$config_path => config_path('repositories.php')],
             'repositories'
         );
+        $custom_eloquent_path = __DIR__ . '/../../../config/CustomEloquentProvider.php';
+        $this->publishes(
+            [$custom_eloquent_path => base_path('/app/Providers/CustomEloquentProvider.php')],
+            'repositories'
+        );
     }
 
     public function registerBindings()
