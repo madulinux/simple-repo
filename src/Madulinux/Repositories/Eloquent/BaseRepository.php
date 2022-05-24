@@ -215,7 +215,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $data = $data->get();
 
-        $last_page = (int) round($total/$per_page);
+        $last_page = (int) ceil($total/$per_page);
 
         $result = [
             'total'             => $total,
