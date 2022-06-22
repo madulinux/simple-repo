@@ -1,4 +1,5 @@
 <?php
+
 namespace Madulinux\Repositories\Eloquent;
 
 use Closure;
@@ -88,13 +89,13 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     {
         $model = $this->app->make($this->model());
 
-        if (! $model instanceof Model) {
+        if (!$model instanceof Model) {
             throw new GeneralException("Class {$this->model()} must be an instace of " . Model::class);
         }
-        
+
         return $model;
     }
-    
+
     /**
      * Retrieve data array for populate field select
      *
@@ -141,7 +142,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         return $result;
     }
-    
+
     /**
      * @param array $columns
      * @return mixed
@@ -198,8 +199,8 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $from = 1;
         $data = $this->model;
-        
-        if (!empty($search_fields)) {
+
+        if (!empty($search_fields) && !empty($search)) {
             $data = $data->whereLike($search_fields, $search);
         }
 
@@ -215,7 +216,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $data = $data->get();
 
-        $last_page = (int) ceil($total/$per_page);
+        $last_page = (int) ceil($total / $per_page);
 
         $result = [
             'total'             => $total,
@@ -231,9 +232,63 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $this->resetScope();
 
         return $result;
-        
     }
-    
+
+
+    /**
+     * laravel paginate
+     * @param int $length
+     * @return mixed
+     */
+    public function paginate($length)
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->paginate($length);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+    }
+
+    /**
+     * laravel simplePaginate
+     * @param int $length
+     * @return mixed
+     */
+    public function simplePaginate($length)
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->simplePaginate($length);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+    }
+
+    /**
+     * laravel cursorPaginate
+     * @param int $length
+     * @return mixed
+     */
+    public function cursorPaginate($length)
+    {
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $result = $this->model->cursorPaginate($length);
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+    }
+
     /**
      * jquery datatables (datatables.net)
      * @param array $request
@@ -253,7 +308,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
 
             if (isset($column['search'])) {
-                if(isset($column['search']['value'])) {
+                if (isset($column['search']['value'])) {
                     $search_value = $column['search']['value'];
                     $search_regex = $column['search']['regex'];
                     if ($search_value != null || $search_value != "") {
@@ -261,12 +316,11 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
                             $where[] = [$column['name'] ?? $column['data'], $search_value];
                         } else {
                             if ($search_regex == 'true') {
-                                $where[] = [$column['name'] ?? $column['data'], 'like', '%'.$search_value.'%'];
+                                $where[] = [$column['name'] ?? $column['data'], 'like', '%' . $search_value . '%'];
                             } else {
                                 $where[] = [$column['name'] ?? $column['data'], 'REGEXP', $search_regex];
                             }
                         }
-
                     }
                 }
             }
@@ -279,18 +333,21 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         }
 
         $select = $select == null ? ['*'] : $select;
-        
+
         $start = (int) $request['start'];
         $length = (int) $request['length'];
         $search = (array) $request['search'];
         $order = (array) $request['order'];
         $with = isset($request['with']) ? (array) $request['with'] : [];
         $join = isset($request['join']) ? (array) $request['join'] : [];
-        
+
         $this->applyCriteria();
         $this->applyScope();
-        
+
         $data = $this->model;
+
+        $recordsTotal = $data->count();
+        $recordsFiltered = $recordsTotal;
         if ($with) {
             $data = $data->with($with);
         }
@@ -319,11 +376,15 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             if ($search['value'] != null || $search['value'] != '') {
                 $data = $data->where(function ($query) use ($searchable, $search) {
                     foreach ($searchable as $key => $column) {
-                        $query = ($key == 0) ? $query->where($column, 'like', '%'.$search['value'].'%') : $query->orWhere($column, 'like', '%'.$search['value'].'%');
+                        $query = ($key == 0) ? $query->where($column, 'like', '%' . $search['value'] . '%') : $query->orWhere($column, 'like', '%' . $search['value'] . '%');
                     }
                     return $query;
                 });
             }
+        }
+
+        if (count($where) != 0 || isset($search['value'])) {
+            $recordsFiltered = $data->count();
         }
 
         if ($order) {
@@ -332,8 +393,8 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
 
-        $recordsTotal = $data->count();
-        $recordsFiltered = $data->count();
+        
+        
         $data = $data->skip($start)->take($length)->get();
 
         $result = (object) [
@@ -393,11 +454,10 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $this->applyScope();
 
         $result = $this->model->find($id, $columns);
-        
+
         $this->resetModel();
 
         return $result;
-
     }
 
     /**
@@ -410,7 +470,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     {
         $this->applyCriteria();
         $this->applyScope();
-        
+
         $result = $this->model->where($field, '=', $value)->get($columns);
 
         $this->resetModel();
@@ -557,7 +617,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $this->resetModel();
         $this->resetScope();
-        
+
         return $result;
     }
 
@@ -697,7 +757,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $this->applyConditions($conditions, $or);
         return $this;
     }
-    
+
     /**
      * @param array $fields
      * @return $this
@@ -883,7 +943,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         return $this;
     }
 
-        /**
+    /**
      * Query Scope
      *
      * @param \Closure $scope
@@ -954,7 +1014,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $secondary_table = null;
         $secondary_table_key = null;
         $join_type = 'left';
-        
+
         foreach ($join as $key => $value) {
             if (is_array($value)) {
 
@@ -971,13 +1031,13 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
                 if ($primary_table != null & $secondary_table != null && $secondary_table_key != null) {
                     switch ($join_type) {
                         case 'left':
-                            $this->model = $this->model->leftJoin($secondary_table, $secondary_table.'.'.$secondary_table_key, $primary_table.'.'.$primary_table_key);
+                            $this->model = $this->model->leftJoin($secondary_table, $secondary_table . '.' . $secondary_table_key, $primary_table . '.' . $primary_table_key);
                             break;
                         case 'right':
-                            $this->model = $this->model->rightJoin($secondary_table, $secondary_table.'.'.$secondary_table_key, $primary_table.'.'.$primary_table_key);
+                            $this->model = $this->model->rightJoin($secondary_table, $secondary_table . '.' . $secondary_table_key, $primary_table . '.' . $primary_table_key);
                             break;
                         default:
-                            $this->model = $this->model->join($secondary_table, $secondary_table.'.'.$secondary_table_key, $primary_table.'.'.$primary_table_key);
+                            $this->model = $this->model->join($secondary_table, $secondary_table . '.' . $secondary_table_key, $primary_table . '.' . $primary_table_key);
                             break;
                     }
                 }
@@ -988,5 +1048,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     /**
      * boot from children repository
      */
-    public function boot() {}
+    public function boot()
+    {
+    }
 }
