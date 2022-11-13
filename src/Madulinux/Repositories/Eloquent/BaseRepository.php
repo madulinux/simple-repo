@@ -393,6 +393,110 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
 
+
+    /**
+     * jquery datatables (datatables.net)
+     * @param array $request
+     * @return mixed
+     */
+    public function datatableIlike(array $request)
+    {
+        $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
+        $select = $columnDef;
+        $columns = $request['columns'];
+
+        $searchable = array();
+        $where = [];
+        foreach ($columns as $key => $column) {
+            if ($columnDef == null && isset($column['name'])) {
+                $select[$key] = $column['name'] . ' as ' . $column['data'];
+            }
+
+            if (isset($column['search'])) {
+                if (isset($column['search']['value'])) {
+                    $search_value = $column['search']['value'];
+                    $search_regex = $column['search']['regex'];
+                    if ($search_value != null || $search_value != "") {
+                        if ($search_regex == 'false') {
+                            $where[] = [$column['name'] ?? $column['data'], $search_value];
+                        } else {
+                            if ($search_regex == 'true') {
+                                $where[] = [$column['name'] ?? $column['data'], 'ilike', '%' . $search_value . '%'];
+                            } else {
+                                $where[] = [$column['name'] ?? $column['data'], 'REGEXP', $search_regex];
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isset($column['searchable'])) {
+                if ($column['searchable'] == 'true') {
+                    $searchable[] = $column['name'] ?? $column['data'];
+                }
+            }
+        }
+
+        $select = $select == null ? ['*'] : $select;
+
+        $start = (int) $request['start'];
+        $length = (int) $request['length'];
+        $search = (array) $request['search'];
+        $order = (array) $request['order'];
+        $with = isset($request['with']) ? (array) $request['with'] : [];
+        $join = isset($request['join']) ? (array) $request['join'] : [];
+
+        $this->applyCriteria();
+        $this->applyScope();
+
+        $data = $this->model;
+
+        $recordsTotal = $data->count();
+        $recordsFiltered = $recordsTotal;
+        if ($with) {
+            $data = $data->with($with);
+        }
+
+        $data = $data->select($select);
+        if ($join) {
+            $this->applyJoin($join);
+        }
+
+        if (count($where) != 0) {
+            $data = $data->where(function ($query) use ($where) {
+                foreach ($where as $key => $value) {
+                    if (count($value) == 2) {
+                        list($c, $s) = $value;
+                        $query = $query->where($c, $s);
+                    }
+                    if (count($value) == 3) {
+                        list($c, $op, $s) = $value;
+                        $query = $query->where($c, $op, $s);
+                    }
+                }
+            });
+        }
+
+        if (isset($search['value'])) {
+            if ($search['value'] != null || $search['value'] != '') {
+                $data = $data->where(function ($query) use ($searchable, $search) {
+                    foreach ($searchable as $key => $column) {
+                        $query = ($key == 0) ? $query->where($column, 'ilike', '%' . $search['value'] . '%') : $query->orWhere($column, 'ilike', '%' . $search['value'] . '%');
+                    }
+                    return $query;
+                });
+            }
+        }
+
+        if (count($where) != 0 || isset($search['value'])) {
+            $recordsFiltered = $data->count();
+        }
+
+        if ($order) {
+            foreach ($order as $k => $ord) {
+                $data = $data->orderBy($columns[$ord['column']]['data'], $ord['dir']);
+            }
+        }
         
         
         $data = $data->skip($start)->take($length)->get();
