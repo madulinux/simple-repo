@@ -393,6 +393,19 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
 
+        $data = $data->skip($start)->take($length)->get();
+
+        $result = (object) [
+            'data'              => $data,
+            'recordsTotal'      => $recordsTotal,
+            'recordsFiltered'   => $recordsFiltered,
+        ];
+
+        $this->resetModel();
+        $this->resetScope();
+
+        return $result;
+    }
 
     /**
      * jquery datatables (datatables.net)
