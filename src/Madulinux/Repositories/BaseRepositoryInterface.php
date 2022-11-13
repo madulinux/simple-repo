@@ -78,6 +78,14 @@ interface BaseRepositoryInterface
      * @return mixed
      */
     public function datatable(array $request);
+    
+    
+    /**
+     * jquery datatable default request (draw, columns, order, start, length, search)
+     * @param array $request
+     * @return mixed
+     */
+    public function datatableIlike(array $request);
 
     /**
      * @param array $data
