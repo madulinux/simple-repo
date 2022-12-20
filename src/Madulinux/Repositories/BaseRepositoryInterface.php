@@ -45,11 +45,11 @@ interface BaseRepositoryInterface
      * @param int $per_page
      * @param array $search_fields
      * @param string $search
-     * 
+     *
      * @return mixed
      */
     public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "");
-    
+
 
     /**
      * laravel paginate
@@ -77,15 +77,15 @@ interface BaseRepositoryInterface
      * @param array $request
      * @return mixed
      */
-    public function datatable(array $request);
-    
-    
+    public function datatable(array $request, bool $strictSelect = true);
+
+
     /**
      * jquery datatable default request (draw, columns, order, start, length, search)
      * @param array $request
      * @return mixed
      */
-    public function datatableIlike(array $request);
+    public function datatableIlike(array $request, bool $strictSelect = true);
 
     /**
      * @param array $data
@@ -167,7 +167,7 @@ interface BaseRepositoryInterface
     /**
      * @param array $data
      * @param $id
-     * 
+     *
      * @return mixed
      */
     public function update(array $data, $id);
@@ -177,7 +177,7 @@ interface BaseRepositoryInterface
      * @param string $field
      * @param $value
      * @param array $data
-     * 
+     *
      * @return mixed
      */
     public function updateBy(string $field, $value, array $data);
@@ -229,7 +229,7 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function withCount($relations);
-    
+
 
     /**
      * @param string $relation
@@ -238,16 +238,16 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function whereHas($relation, $closure);
-    
+
     /**
      * where conditions
      * @param array $conditions
      * @param bool $or
-     * 
+     *
      * @return $this
      */
     public function whereConditions(array $conditions, bool $or = false);
-    
+
     /**
      * @param array $fields
      *
@@ -271,7 +271,7 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function orderBy($column, $direction = 'asc');
-    
+
     /**
      * @return $this
      */
@@ -295,12 +295,12 @@ interface BaseRepositoryInterface
      * @return $this
      */
     public function limit($limit);
-    
+
     /**
      * @param array $where
      * @param string $column
      * @param bool $reset // clear or reset model and scope
-     * 
+     *
      * @return int
      */
     public function count(array $where = [], $columns = '*', $reset = true);
