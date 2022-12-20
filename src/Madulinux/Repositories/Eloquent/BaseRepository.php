@@ -74,7 +74,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     }
 
     /**
-     * 
+     *
      */
     public function resetModel()
     {
@@ -161,7 +161,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param array $where
      * @param string $column
      * @param bool $reset // clear or reset model and scope
-     * 
+     *
      * @return int
      */
     public function count(array $where = [], $columns = '*', $reset = true)
@@ -189,7 +189,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param int $per_page
      * @param array $search_fields
      * @param string $search
-     * 
+     *
      * @return mixed
      */
     public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "")
@@ -294,16 +294,16 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param array $request
      * @return mixed
      */
-    public function datatable(array $request)
+    public function datatable(array $request, bool $strictSelect = true)
     {
         $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
-        $select = $columnDef;
+        $select = $strictSelect ? $columnDef : null;
         $columns = $request['columns'];
 
         $searchable = array();
         $where = [];
         foreach ($columns as $key => $column) {
-            if ($columnDef == null && isset($column['name'])) {
+            if ($columnDef == null && isset($column['name']) && $strictSelect) {
                 $select[$key] = $column['name'] . ' as ' . $column['data'];
             }
 
@@ -332,8 +332,6 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
 
-        $select = $select == null ? ['*'] : $select;
-
         $start = (int) $request['start'];
         $length = (int) $request['length'];
         $search = (array) $request['search'];
@@ -348,11 +346,15 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $recordsTotal = $data->count();
         $recordsFiltered = $recordsTotal;
+
         if ($with) {
             $data = $data->with($with);
         }
 
-        $data = $data->select($select);
+        if ($strictSelect) {
+            $data = $data->select($select);
+        }
+
         if ($join) {
             $this->applyJoin($join);
         }
@@ -412,16 +414,16 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param array $request
      * @return mixed
      */
-    public function datatableIlike(array $request)
+    public function datatableIlike(array $request, bool $strictSelect = true)
     {
         $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
-        $select = $columnDef;
+        $select = $strictSelect ? $columnDef : null;
         $columns = $request['columns'];
 
         $searchable = array();
         $where = [];
         foreach ($columns as $key => $column) {
-            if ($columnDef == null && isset($column['name'])) {
+            if ($columnDef == null && isset($column['name']) && $strictSelect) {
                 $select[$key] = $column['name'] . ' as ' . $column['data'];
             }
 
@@ -450,8 +452,6 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
 
-        $select = $select == null ? ['*'] : $select;
-
         $start = (int) $request['start'];
         $length = (int) $request['length'];
         $search = (array) $request['search'];
@@ -470,7 +470,10 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             $data = $data->with($with);
         }
 
-        $data = $data->select($select);
+        if ($strictSelect) {
+            $data = $data->select($select);
+        }
+
         if ($join) {
             $this->applyJoin($join);
         }
@@ -510,8 +513,8 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
                 $data = $data->orderBy($columns[$ord['column']]['data'], $ord['dir']);
             }
         }
-        
-        
+
+
         $data = $data->skip($start)->take($length)->get();
 
         $result = (object) [
@@ -866,7 +869,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * where conditions
      * @param array $conditions
      * @param bool $or
-     * 
+     *
      * @return $this
      */
     public function whereConditions(array $conditions, bool $or = false)
@@ -968,7 +971,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
     }
 
     /**
-     * @param bool $status 
+     * @param bool $status
      * @return $this
      */
     public function skipCriteria($status = true)
