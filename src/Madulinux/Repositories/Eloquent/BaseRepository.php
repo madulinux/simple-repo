@@ -294,9 +294,10 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param array $request
      * @return mixed
      */
-    public function datatable(array $request, bool $strictSelect = true)
+    public function datatable(array $request)
     {
         $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
+        $strictSelect = isset($request['strictSelect']) ? boolval($request['strictSelect']) : false;
         $select = $strictSelect ? $columnDef : null;
         $columns = $request['columns'];
 
@@ -414,9 +415,10 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      * @param array $request
      * @return mixed
      */
-    public function datatableIlike(array $request, bool $strictSelect = true)
+    public function datatableIlike(array $request)
     {
         $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
+        $strictSelect = isset($request['strictSelect']) ? boolval($request['strictSelect']) : false;
         $select = $strictSelect ? $columnDef : null;
         $columns = $request['columns'];
 
