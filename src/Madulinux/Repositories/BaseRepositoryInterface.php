@@ -77,7 +77,7 @@ interface BaseRepositoryInterface
      * @param array $request
      * @return mixed
      */
-    public function datatable(array $request, bool $strictSelect = true);
+    public function datatable(array $request);
 
 
     /**
@@ -85,7 +85,7 @@ interface BaseRepositoryInterface
      * @param array $request
      * @return mixed
      */
-    public function datatableIlike(array $request, bool $strictSelect = true);
+    public function datatableIlike(array $request);
 
     /**
      * @param array $data
