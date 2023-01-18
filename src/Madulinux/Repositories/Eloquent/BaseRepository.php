@@ -299,31 +299,38 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
         $strictSelect = isset($request['strictSelect']) ? boolval($request['strictSelect']) : false;
         $select = $strictSelect ? $columnDef : null;
+        $filter = isset($request['filter']) ? $request['filter'] : [];
+        $filter_fields = isset($request['filter_fields']) ? $request['filter_fields'] : [];
+        $search_fields = isset($request['search_fields']) ? $request['search_fields'] : [];
         $columns = $request['columns'];
-
+        $search = (array) $request['search'];
         $searchable = array();
         $where = [];
+
+        $start = (int) $request['start'];
+        $length = (int) $request['length'];
+        $order = (array) $request['order'];
+        $with = isset($request['with']) ? (array) $request['with'] : [];
+        $withCount = isset($request['withCount']) ? (array) $request['withCount'] : [];
+        $join = isset($request['join']) ? (array) $request['join'] : [];
+
+        if (!empty($filter)) {
+            foreach ($filter as $k => $f) {
+                if (in_array($k, $filter_fields)) {
+                    $where[] = [$k, $f];
+                }
+            }
+        }
+
+        if ($search && !empty($search_fields)) {
+            foreach ($search_fields as $key => $field) {
+                $where[] =  [$field, 'like', '%' . $search . '%'];
+            }
+        }
+
         foreach ($columns as $key => $column) {
             if ($columnDef == null && isset($column['name']) && $strictSelect) {
                 $select[$key] = $column['name'] . ' as ' . $column['data'];
-            }
-
-            if (isset($column['search'])) {
-                if (isset($column['search']['value'])) {
-                    $search_value = $column['search']['value'];
-                    $search_regex = $column['search']['regex'];
-                    if ($search_value != null || $search_value != "") {
-                        if ($search_regex == 'false') {
-                            $where[] = [$column['name'] ?? $column['data'], $search_value];
-                        } else {
-                            if ($search_regex == 'true') {
-                                $where[] = [$column['name'] ?? $column['data'], 'like', '%' . $search_value . '%'];
-                            } else {
-                                $where[] = [$column['name'] ?? $column['data'], 'REGEXP', $search_regex];
-                            }
-                        }
-                    }
-                }
             }
 
             if (isset($column['searchable'])) {
@@ -332,13 +339,6 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
                 }
             }
         }
-
-        $start = (int) $request['start'];
-        $length = (int) $request['length'];
-        $search = (array) $request['search'];
-        $order = (array) $request['order'];
-        $with = isset($request['with']) ? (array) $request['with'] : [];
-        $join = isset($request['join']) ? (array) $request['join'] : [];
 
         $this->applyCriteria();
         $this->applyScope();
@@ -352,12 +352,38 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             $data = $data->with($with);
         }
 
+        if ($withCount) {
+            $data = $data->withCount($withCount);
+        }
+
         if ($strictSelect) {
             $data = $data->select($select);
         }
 
         if ($join) {
             $this->applyJoin($join);
+        }
+
+        if (!empty($filter)) {
+            foreach ($filter as $k => $f) {
+                if (is_array($f)) {
+                    if (!empty($filter_fields)) {
+                        if (in_array($f[0], $filter_fields)) {
+                            $where[] = $f;
+                        }
+                    } else {
+                        $where[] = $f;
+                    }
+                } else {
+                    if (!empty($filter_fields)) {
+                        if (in_array($k, $filter_fields)) {
+                            $where[] = [$k, $f];
+                        }
+                    } else {
+                        $where[] = [$k, $f];
+                    }
+                }
+            }
         }
 
         if (count($where) != 0) {
@@ -377,12 +403,21 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         if (isset($search['value'])) {
             if ($search['value'] != null || $search['value'] != '') {
-                $data = $data->where(function ($query) use ($searchable, $search) {
-                    foreach ($searchable as $key => $column) {
-                        $query = ($key == 0) ? $query->where($column, 'like', '%' . $search['value'] . '%') : $query->orWhere($column, 'like', '%' . $search['value'] . '%');
-                    }
-                    return $query;
-                });
+                if (!empty($search_fields)) {
+                    $data = $data->where(function ($query) use ($search_fields, $search) {
+                        foreach ($search_fields as $key => $column) {
+                            $query = ($key == 0) ? $query->where($column, 'like', '%' . $search['value'] . '%') : $query->orWhere($column, 'like', '%' . $search['value'] . '%');
+                        }
+                        return $query;
+                    });
+                } else {
+                    $data = $data->where(function ($query) use ($searchable, $search) {
+                        foreach ($searchable as $key => $column) {
+                            $query = ($key == 0) ? $query->where($column, 'like', '%' . $search['value'] . '%') : $query->orWhere($column, 'like', '%' . $search['value'] . '%');
+                        }
+                        return $query;
+                    });
+                }
             }
         }
 
@@ -420,31 +455,26 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $columnDef = isset($request['columnDef']) ? $request['columnDef'] : null;
         $strictSelect = isset($request['strictSelect']) ? boolval($request['strictSelect']) : false;
         $select = $strictSelect ? $columnDef : null;
+        $filter = isset($request['filter']) ? $request['filter'] : [];
+        $filter_fields = isset($request['filter_fields']) ? $request['filter_fields'] : [];
+        $search_fields = isset($request['search_fields']) ? $request['search_fields'] : [];
         $columns = $request['columns'];
+        $search = (array) $request['search'];
+
+        $start = (int) $request['start'];
+        $length = (int) $request['length'];
+        $order = (array) $request['order'];
+        $with = isset($request['with']) ? (array) $request['with'] : [];
+        $withCount = isset($request['withCount']) ? (array) $request['withCount'] : [];
+        $join = isset($request['join']) ? (array) $request['join'] : [];
 
         $searchable = array();
         $where = [];
+
+
         foreach ($columns as $key => $column) {
             if ($columnDef == null && isset($column['name']) && $strictSelect) {
                 $select[$key] = $column['name'] . ' as ' . $column['data'];
-            }
-
-            if (isset($column['search'])) {
-                if (isset($column['search']['value'])) {
-                    $search_value = $column['search']['value'];
-                    $search_regex = $column['search']['regex'];
-                    if ($search_value != null || $search_value != "") {
-                        if ($search_regex == 'false') {
-                            $where[] = [$column['name'] ?? $column['data'], $search_value];
-                        } else {
-                            if ($search_regex == 'true') {
-                                $where[] = [$column['name'] ?? $column['data'], 'ilike', '%' . $search_value . '%'];
-                            } else {
-                                $where[] = [$column['name'] ?? $column['data'], 'REGEXP', $search_regex];
-                            }
-                        }
-                    }
-                }
             }
 
             if (isset($column['searchable'])) {
@@ -454,12 +484,6 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             }
         }
 
-        $start = (int) $request['start'];
-        $length = (int) $request['length'];
-        $search = (array) $request['search'];
-        $order = (array) $request['order'];
-        $with = isset($request['with']) ? (array) $request['with'] : [];
-        $join = isset($request['join']) ? (array) $request['join'] : [];
 
         $this->applyCriteria();
         $this->applyScope();
@@ -468,8 +492,13 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         $recordsTotal = $data->count();
         $recordsFiltered = $recordsTotal;
+
         if ($with) {
             $data = $data->with($with);
+        }
+
+        if ($withCount) {
+            $data = $data->withCount($withCount);
         }
 
         if ($strictSelect) {
@@ -478,6 +507,28 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         if ($join) {
             $this->applyJoin($join);
+        }
+
+        if (!empty($filter)) {
+            foreach ($filter as $k => $f) {
+                if (is_array($f)) {
+                    if (!empty($filter_fields)) {
+                        if (in_array($f[0], $filter_fields)) {
+                            $where[] = $f;
+                        }
+                    } else {
+                        $where[] = $f;
+                    }
+                } else {
+                    if (!empty($filter_fields)) {
+                        if (in_array($k, $filter_fields)) {
+                            $where[] = [$k, $f];
+                        }
+                    } else {
+                        $where[] = [$k, $f];
+                    }
+                }
+            }
         }
 
         if (count($where) != 0) {
@@ -497,12 +548,21 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
 
         if (isset($search['value'])) {
             if ($search['value'] != null || $search['value'] != '') {
-                $data = $data->where(function ($query) use ($searchable, $search) {
-                    foreach ($searchable as $key => $column) {
-                        $query = ($key == 0) ? $query->where($column, 'ilike', '%' . $search['value'] . '%') : $query->orWhere($column, 'ilike', '%' . $search['value'] . '%');
-                    }
-                    return $query;
-                });
+                if (!empty($search_fields)) {
+                    $data = $data->where(function ($query) use ($search_fields, $search) {
+                        foreach ($search_fields as $key => $column) {
+                            $query = ($key == 0) ? $query->where($column, 'ilike', '%' . $search['value'] . '%') : $query->orWhere($column, 'ilike', '%' . $search['value'] . '%');
+                        }
+                        return $query;
+                    });
+                } else {
+                    $data = $data->where(function ($query) use ($searchable, $search) {
+                        foreach ($searchable as $key => $column) {
+                            $query = ($key == 0) ? $query->where($column, 'ilike', '%' . $search['value'] . '%') : $query->orWhere($column, 'ilike', '%' . $search['value'] . '%');
+                        }
+                        return $query;
+                    });
+                }
             }
         }
 
