@@ -192,7 +192,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
      *
      * @return mixed
      */
-    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "")
+    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "", string $order_by = "", string $order_dir = "asc")
     {
         $this->applyCriteria();
         $this->applyScope();
@@ -213,6 +213,13 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
             $from = $skip + 1;
             $data = $data->skip($skip)->take($per_page);
         }
+
+        if ($order_by != "") {
+            if (in_array($order_dir, ["asc", "desc"])) {
+                $data = $data->orderBy($order_by, $order_dir);
+            }
+        }
+
 
         $data = $data->get();
 
