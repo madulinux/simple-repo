@@ -48,7 +48,7 @@ interface BaseRepositoryInterface
      *
      * @return mixed
      */
-    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "");
+    public function pagination(int $page = 1, int $per_page = 0, array $search_fields = [], string $search = "", string $order_by = "", string $order_dir = "asc");
 
 
     /**
