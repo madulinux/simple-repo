@@ -311,8 +311,6 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $search_fields = isset($request['search_fields']) ? $request['search_fields'] : [];
         $columns = $request['columns'];
         $search = (array) $request['search'];
-        $searchable = array();
-        $where = [];
 
         $start = (int) $request['start'];
         $length = (int) $request['length'];
@@ -321,19 +319,9 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
         $withCount = isset($request['withCount']) ? (array) $request['withCount'] : [];
         $join = isset($request['join']) ? (array) $request['join'] : [];
 
-        if (!empty($filter)) {
-            foreach ($filter as $k => $f) {
-                if (in_array($k, $filter_fields)) {
-                    $where[] = [$k, $f];
-                }
-            }
-        }
+        $searchable = array();
+        $where = [];
 
-        if ($search && !empty($search_fields)) {
-            foreach ($search_fields as $key => $field) {
-                $where[] =  [$field, 'like', '%' . $search . '%'];
-            }
-        }
 
         foreach ($columns as $key => $column) {
             if ($columnDef == null && isset($column['name']) && $strictSelect) {
@@ -346,6 +334,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
                 }
             }
         }
+
 
         $this->applyCriteria();
         $this->applyScope();
@@ -437,6 +426,7 @@ abstract class BaseRepository implements BaseRepositoryInterface, CriteriaInterf
                 $data = $data->orderBy($columns[$ord['column']]['data'], $ord['dir']);
             }
         }
+
 
         $data = $data->skip($start)->take($length)->get();
 
